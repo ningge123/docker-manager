@@ -48,17 +48,27 @@ func UpdateServerContainer(AppId string, json map[string]interface{}) {
 		ContainerName := utils.TrimContainerName(v["Names"])
 		v["Name"] = ContainerName
 
-		data.AddReplicas(ContainerName, ServerName)
-
-		var service = table.Service{
-			Name:     ContainerName,
-			Image:    v["Image"].(string),
-			Volumes:  GetVolumes(v["Mounts"].([]interface{})),
-			Running:  0,
-			Ports:    utils.ArrInterfaceToMap(v["Ports"].([]interface{})),
-			Replicas: 0,
+		// 如果不是后台自己新建的应用，不抓取
+		service, err := data.GetService(ContainerName)
+		if err != nil {
+			log.Println("data.UpdateServerContainer.err:", err)
 		}
-		data.AddService(service)
+
+		if service.Id <= 0 {
+			continue
+		}
+
+		//data.AddReplicas(ContainerName, ServerName)
+
+		//var addService = table.Service{
+		//	Name:     ContainerName,
+		//	Image:    v["Image"].(string),
+		//	Volumes:  GetVolumes(v["Mounts"].([]interface{})),
+		//	Running:  0,
+		//	Ports:    utils.ArrInterfaceToMap(v["Ports"].([]interface{})),
+		//	Replicas: 0,
+		//}
+		//data.AddService(addService)
 
 		var container table.Container
 		utils2.MapToStruct(v, &container)

@@ -74,6 +74,19 @@ func PublishYamlHandler(c *gin.Context, req struct {
 }
 
 func PublishHandler(c *gin.Context, serviceInfo dto.ServiceInfo) {
+	// 是否存在该服务了
+	oldService, err := data.GetService(serviceInfo.Name)
+	if err != nil {
+		log.Println(err)
+		boot.Resp(c, "100100", err.Error(), "")
+		return
+	}
+
+	if oldService.Id > 0 {
+		boot.Resp(c, "100100", "服务已存在", "")
+		return
+	}
+
 	s := table.Service{
 		Name:     serviceInfo.Name,
 		Image:    serviceInfo.Image,
@@ -84,9 +97,18 @@ func PublishHandler(c *gin.Context, serviceInfo dto.ServiceInfo) {
 		Replicas: len(serviceInfo.ServerNames),
 		Cover:    serviceInfo.Cover,
 	}
-	utils2.StructToMap(serviceInfo.Ports, &s.Ports)
 
-	err := service.PublishAppTask(serviceInfo.ServerNames, s)
+	// 先写在数据库
+	err = data.AddService(s)
+	if err != nil {
+		log.Println(err)
+		boot.Resp(c, "100100", err.Error(), "")
+		return
+	}
+
+	// 再发布任务
+	utils2.StructToMap(serviceInfo.Ports, &s.Ports)
+	err = service.PublishAppTask(serviceInfo.ServerNames, s)
 	if err != nil {
 		log.Println(err)
 		boot.Resp(c, "100100", err.Error(), "")
